@@ -1,0 +1,99 @@
+% 完整 DANN 模型图
+% main.tex 可改为 \input{models/dann.tex} 来绘制该模型
+
+\input{modules/cube.tex} % 引入伪3D特征片
+\input{modules/cfe.tex} % 引入CFE特征压缩模块
+\input{modules/eeg_signal.tex} % 引入EEG输入卡片
+\input{modules/model_common.tex} % 引入通用节点和箭头样式
+\input{modules/domain_feature.tex} % 引入源域/目标域特征点云
+
+\tikzset{
+  % DANN专用紧凑GRL样式
+  dann compact grl/.style={
+    dann grl, % 继承通用GRL样式
+    minimum width=8mm % 缩短GRL矩形宽度
+  },
+  % DANN共享CFE组件
+  pics/dann shared cfe/.style={
+    code={ % 定义DANN共享特征提取器
+      % scale控制CFE细节模块在整张DANN图里的显示大小
+      \begin{scope}[scale=.48, transform shape] % 缩小CFE细节模块
+        \pic {cfe module}; % 引用CFE模块
+      \end{scope}
+      \node[fit=(cfebox), inner sep=0pt] (dannCFE) {}; % 共享CFE区域
+      % 下面四个坐标是外部箭头连接点，都落在CFE外框边界上
+      \coordinate (dann-cfe-source-west) at ([yshift=4mm]dannCFE.west); % 源域输入接外框
+      \coordinate (dann-cfe-target-west) at ([yshift=-4mm]dannCFE.west); % 目标域输入接外框
+      \coordinate (dann-emo-east) at ([yshift=4mm]dannCFE.east); % 情绪分支输出点
+      \coordinate (dann-domain-east) at ([yshift=-4mm]dannCFE.east); % 域分支输出点
+    }
+  },
+  % DANN专用GRL组件
+  pics/dann grl/.style={
+    code={ % 定义紧凑梯度反转层
+      \node[dann compact grl] (grlNode) at (0, 0) {GRL}; % 紧凑GRL节点
+      \coordinate (grl-west) at (grlNode.west); % 左侧连接点
+      \coordinate (grl-east) at (grlNode.east); % 右侧连接点
+    }
+  },
+  % DANN专用域判别器组件
+  pics/dann domain discriminator/.style={
+    code={ % 定义域判别器
+      \node[dann domain] (domainHead) at (0, 0) {Domain\\Discriminator}; % 域判别器
+      \coordinate (domain-west) at (domainHead.west); % 左侧连接点
+      \coordinate (domain-east) at (domainHead.east); % 右侧连接点
+    }
+  },
+  % DANN域混淆输出组件
+  pics/dann domain confusion/.style={
+    code={ % 定义域混淆结果
+      \begin{scope}[scale=.50, transform shape] % 缩小域特征点云
+        \pic at (0, 0) {domain feature pair}; % 源域/目标域混淆表示
+      \end{scope}
+      \node[dann output] (domainConfusionOut) at (1.95, 0) {Domain\\Confusion}; % 域混淆输出
+      \draw[dann confuse edge] (domainFeature-east) -- (domainConfusionOut.west); % 点云到域混淆
+      \coordinate (domain-confusion-west) at (-.40, 0); % 域混淆入口点
+    }
+  }
+}
+
+\begin{tikzpicture} % DANN模型图开始
+  % 横向布局参数：调小相邻x坐标差值，就能整体收窄图
+  \def\xData{0} % Source/Target输入模块的x坐标
+  \def\xCFE{2} % CFE模块的x坐标，越小越靠近输入
+  \def\xHead{6.35} % 情绪分类器的x坐标，越小越靠近CFE
+  \def\xGRL{5.15} % GRL模块的x坐标，越小越靠近CFE
+  \def\xDomain{6.90} % 域判别器的x坐标，越小越靠近GRL
+  \def\xConfusion{8.75} % 域混淆输出的x坐标
+  %
+  % 纵向布局参数：控制上下分支的高度
+  \def\ySource{1.40} % Source输入模块的y坐标
+  \def\yTarget{-.40} % Target输入模块的y坐标
+  \def\yHead{1.45} % 情绪分类器分支的y坐标
+  \def\yDomain{-.70} % 域判别分支的y坐标
+  %
+  \pic at (\xData, \ySource) {source eeg}; % 放置源域EEG输入
+  \pic at (\xData, \yTarget) {target eeg}; % 放置目标域EEG输入
+  \pic at (\xCFE, 0) {dann shared cfe}; % 放置共享CFE特征提取器
+  \pic at (\xHead, \yHead) {emotion classifier}; % 放置情绪分类器和预测输出
+  \pic at (\xGRL, \yDomain) {dann grl}; % 放置紧凑梯度反转层
+  \pic at (\xDomain, \yDomain) {dann domain discriminator}; % 放置域判别器
+  \pic at (\xConfusion, \yDomain) {dann domain confusion}; % 放置域混淆输出
+  %
+  \draw[dann edge] (source-east) -- (dann-cfe-source-west); % Source data进入CFE上半部
+  \draw[dann edge] (target-east) -- (dann-cfe-target-west); % Target data进入CFE下半部
+  \draw[dann edge] (dann-emo-east) -- (emo-west); % CFE特征进入情绪分类器
+  \draw[dann confuse edge] (dann-domain-east) -- (grl-west); % CFE特征进入GRL
+  \draw[dann confuse edge] (grl-east) -- (domain-west); % GRL进入域判别器
+  \draw[dann confuse edge] (domain-east) -- (domain-confusion-west); % 域判别器进入域混淆
+  %
+  \node[font=\small, text=black] (titleNode) at (\xCFE, 1.85) {}; % 图标题锚点
+  \begin{scope}[on background layer] % 只创建模型区域锚点
+    \node[
+      inner sep=4mm,
+      fit=(titleNode)(sourceData)(targetData)(dannCFE)(emoHead)(emoOut)(grlNode)(domainHead)(sourceFeatureCloud)(targetFeatureCloud)(domainConfusionOut)
+    ] (modelBox) {}; % 模型区域
+  \end{scope}
+  %
+  \domainFeatureLegend{modelBox}{6mm} % 源域/目标域特征图例
+\end{tikzpicture}

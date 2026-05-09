@@ -1,0 +1,58 @@
+% 集中定义 EEG 信号波形模块
+\providecommand{\eegDataCard}[3]{ % 节点名/标签/样式
+  \node[#3] (#1) at (0, 0) {}; % 数据外框
+  \node[font=\scriptsize] at ([yshift=2.4mm]#1.center) {#2}; % 数据标签
+  \begin{scope}[shift={([yshift=-2mm]#1.center)}, scale=.62] % EEG波形位置
+    \pic {eeg signal}; % EEG波形
+  \end{scope}
+}
+%
+\tikzset{
+  % EEG白色背景样式
+  eeg signal bg/.style={
+    draw=gray!25, % 背景边框色
+    fill=white, % 背景填充色
+    rounded corners=1pt, % 背景轻微圆角
+    line width=.25pt % 背景边框宽度
+  },
+  % EEG波形线样式
+  eeg signal line/.style={
+    draw=black!65,
+    line width=.58pt,
+    line cap=round,
+    line join=round
+  },
+  % EEG信号波形
+  pics/eeg signal/.style={
+    code={ % 定义可复用EEG波形
+      \path[eeg signal bg] (-.70, -.26) rectangle (.70, .30); % EEG白色背景
+      \draw[eeg signal line]
+        (-.62, .00) --
+        (-.56, .01) --
+        (-.50, -.02) --
+        (-.45, .04) --
+        (-.40, -.07) --
+        (-.35, .05) --
+        (-.30, -.02) --
+        (-.25, -.15) --
+        (-.21, .04) --
+        (-.17, .18) --
+        (-.13, .06) --
+        (-.09, -.06) --
+        (-.05, .02) --
+        (.00, -.11) --
+        (.05, -.04) --
+        (.10, -.07) --
+        (.16, .03) --
+        (.21, -.03) --
+        (.26, .08) --
+        (.31, -.09) --
+        (.36, .02) --
+        (.42, -.04) --
+        (.48, .03) --
+        (.54, -.01) --
+        (.58, .00) --
+        (.62, .00); % EEG折线
+    }
+  }
+}

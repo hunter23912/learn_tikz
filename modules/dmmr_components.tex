@@ -1,0 +1,175 @@
+% 集中定义 DMMR 专用组件
+\providecommand{\dmmrReconCard}[3]{% 节点名/标签/样式
+  \node[#3, anchor=west, minimum width=16mm, minimum height=10mm, inner sep=0pt] (#1) at (0, 0) {}; % 重建输出外框
+  \node[font=\scriptsize, align=center, anchor=north] at ([yshift=-1mm]#1.north) {#2}; % 重建输出标签
+  \begin{scope}
+    \clip ([xshift=1mm,yshift=1mm]#1.south west) rectangle ([xshift=-1mm,yshift=-3mm]#1.north east); % 限制波形始终在框内
+    \begin{scope}[shift={([yshift=2.6mm]#1.south)}, scale=.38] % 重建波形位置
+      \pic {eeg signal}; % EEG波形
+    \end{scope}
+  \end{scope}
+  \coordinate (#1-west) at (#1.west); % 左侧连接点
+  \coordinate (#1-east) at (#1.east); % 右侧连接点
+}
+
+\tikzset{
+  % DMMR预处理节点样式
+  dmmr prep/.style={
+    rounded corners=2pt, % 轻微圆角
+    draw=gray!70, % 边框颜色
+    fill=gray!8, % 填充颜色
+    minimum width=18mm, % 节点宽度
+    minimum height=9mm, % 节点高度
+    align=center, % 文本居中
+    font=\scriptsize % 使用较小字号
+  },
+  % DMMR注意力节点样式
+  dmmr attention/.style={
+    rounded corners=2pt, % 轻微圆角
+    draw=purple!55!black, % 边框颜色
+    fill=purple!12, % 填充颜色
+    minimum width=8mm, % 节点宽度
+    minimum height=18mm, % 节点高度
+    align=center, % 文本居中
+    font=\scriptsize % 使用较小字号
+  },
+  % DMMR编码器节点样式
+  dmmr encoder/.style={
+    rounded corners=7pt, % 胶囊形圆角
+    draw=teal!60!black, % 边框颜色
+    fill=cyan!18, % 填充颜色
+    minimum width=10mm, % 节点宽度
+    minimum height=6mm, % 节点高度
+    align=center, % 文本居中
+    font=\scriptsize % 使用较小字号
+  },
+  % DMMR解码器节点样式
+  dmmr decoder/.style={
+    rounded corners=7pt, % 胶囊形圆角
+    draw=green!45!black, % 边框颜色
+    fill=green!14, % 填充颜色
+    minimum width=12mm, % 节点宽度
+    minimum height=8mm, % 节点高度
+    align=center, % 文本居中
+    font=\scriptsize % 使用较小字号
+  },
+  % DMMR域判别器节点样式
+  dmmr subject discriminator/.style={
+    rounded corners=7pt, % 胶囊形圆角
+    draw=blue!55!black, % 边框颜色
+    fill=blue!18, % 填充颜色
+    minimum width=20mm, % 节点宽度
+    minimum height=8mm, % 节点高度
+    align=center, % 文本居中
+    font=\scriptsize % 使用较小字号
+  },
+  % DMMR阶段背景样式
+  dmmr stage/.style={
+    rounded corners=4pt, % 背景圆角
+    draw=gray!70, % 背景边框
+    dashed, % 虚线边框
+    fill=green!7, % 默认浅绿背景
+    inner sep=3mm % 背景内边距
+  },
+  % DMMR损失节点样式
+  dmmr loss/.style={
+    rounded corners=2pt, % 轻微圆角
+    draw=orange!75!black, % loss边框
+    fill=orange!6, % loss背景
+    minimum width=8mm, % 节点宽度
+    minimum height=6mm, % 节点高度
+    align=center, % 文本居中
+    font=\scriptsize % 使用较小字号
+  },
+  % DMMR总损失样式
+  dmmr total loss/.style={
+    rounded corners=2pt, % 轻微圆角
+    draw=red!70!black, % 总损失边框
+    fill=red!10, % 总损失背景
+    minimum width=10mm, % 节点宽度
+    minimum height=6mm, % 节点高度
+    align=center, % 文本居中
+    font=\scriptsize % 使用较小字号
+  },
+  % DMMR混合节点样式
+  dmmr mix/.style={
+    circle,
+    draw=gray!70,
+    fill=white,
+    minimum size=6mm,
+    inner sep=0pt,
+    font=\scriptsize
+  },
+  % DMMR损失相加节点样式
+  dmmr sum/.style={
+    circle, % 圆形节点
+    draw=gray!70, % 边框颜色
+    fill=white, % 背景颜色
+    minimum size=4mm, % 圆圈大小
+    inner sep=0pt, % 无内边距
+    font=\scriptsize\bfseries % 加号字号
+  },
+  % DMMR重建输出样式
+  dmmr recon output/.style={
+    rounded corners=1.5pt, % 轻微圆角
+    draw=gray!50, % 边框颜色
+    fill=white, % 背景颜色
+    minimum width=16mm, % 节点宽度
+    minimum height=11mm, % 节点高度
+    inner xsep=1mm, % 横向内边距
+    inner ysep=1mm, % 纵向内边距
+    align=center, % 文本居中
+    font=\scriptsize % 使用较小字号
+  },
+  % DMMR前向箭头
+  dmmr edge/.style={
+    -{Latex[length=1.5mm]}, % 箭头样式
+    draw=teal!50!black, % 箭头颜色
+    line width=.55pt % 箭头线宽
+  },
+  % DMMR对抗箭头
+  dmmr adv edge/.style={
+    -{Latex[length=1.5mm]}, % 箭头样式
+    draw=purple!65!black, % 对抗分支颜色
+    line width=.55pt % 箭头线宽
+  },
+  % DMMR重建箭头
+  dmmr recon edge/.style={
+    -{Latex[length=1.5mm]}, % 箭头样式
+    draw=green!45!black, % 重建分支颜色
+    line width=.55pt % 箭头线宽
+  },
+  % 小型EEG输出样式
+  dmmr mini eeg box/.style={
+    rounded corners=1pt, % 轻微圆角
+    draw=gray!55, % 边框颜色
+    fill=white, % 背景颜色
+    minimum width=12mm, % 节点宽度
+    minimum height=7mm, % 节点高度
+    inner sep=0pt % 无内边距
+  },
+  % 小型EEG输出组件
+  pics/dmmr mini eeg/.style={
+    code={ % 定义重建EEG小图
+      \node[dmmr mini eeg box] (miniEEGBox) at (0, 0) {}; % 小图外框
+      \begin{scope}[scale=.43, transform shape]
+        \pic at (0, 0) {eeg signal}; % 复用EEG波形
+      \end{scope}
+      \coordinate (miniEEG-west) at (miniEEGBox.west); % 左侧连接点
+      \coordinate (miniEEG-east) at (miniEEGBox.east); % 右侧连接点
+    }
+  },
+  % DMMR预训练总损失组件
+  pics/dmmr pretrain loss/.style={
+    code={ % 定义预训练总损失
+      \node[dmmr loss] (reconLoss) at (0, .45) {$L_{recon}$}; % 重建损失
+      \node[dmmr loss] (advLoss) at (0, -.45) {$L_{adv}$}; % 对抗损失
+      \node[
+        font=\scriptsize,
+        align=center
+      ] (preLossText) at (0, -1.20) {$L_{pre}=L_{recon}+L_{adv}$}; % 总预训练损失
+      \coordinate (preLoss-recon-west) at (reconLoss.west); % 重建损失入口
+      \coordinate (preLoss-adv-west) at (advLoss.west); % 对抗损失入口
+    }
+  }
+}

@@ -1,0 +1,81 @@
+% 集中定义域特征点云模块
+\tikzset{
+  % 特征圆边界样式
+  domain feature circle/.style={
+    circle, % 圆形边界
+    dashed, % 虚线边界
+    line width=.6pt, % 边界线宽
+    minimum size=13mm, % 圆形尺寸
+    inner sep=0pt % 无内边距
+  },
+  % 特征点样式
+  domain feature dot/.style={
+    circle, % 圆点
+    minimum size=1.8mm, % 点大小
+    inner sep=0pt % 无内边距
+  },
+  % 源域特征圆
+  pics/source feature cloud/.style={
+    code={ % 定义源域点云
+      \node[
+        domain feature circle,
+        draw=cyan!70!black,
+        fill=cyan!4
+      ] (sourceFeatureCloud) at (0, 0) {}; % 源域特征边界
+      %
+      \foreach \x/\y in {
+        -.22/.18, 0/.23, .24/.16,
+        -.28/0, -.05/.02, .21/.00,
+        -.19/-.20, .05/-.18, .27/-.23
+      }
+        \node[
+          domain feature dot,
+          fill=cyan!70!blue
+        ] at (\x, \y) {}; % 源域特征点
+      %
+      \coordinate (sourceFeature-north) at (sourceFeatureCloud.north); % 上连接点
+      \coordinate (sourceFeature-south) at (sourceFeatureCloud.south); % 下连接点
+      \coordinate (sourceFeature-west) at (sourceFeatureCloud.west); % 左连接点
+      \coordinate (sourceFeature-east) at (sourceFeatureCloud.east); % 右连接点
+    }
+  },
+  % 目标域特征圆
+  pics/target feature cloud/.style={
+    code={ % 定义目标域点云
+      \node[
+        domain feature circle,
+        draw=green!55!black,
+        fill=green!5
+      ] (targetFeatureCloud) at (0, 0) {}; % 目标域特征边界
+      %
+      \foreach \x/\y in {
+        -.23/.19, .02/.21, .25/.15,
+        -.29/-.02, -.07/.00, .20/-.04,
+        -.21/-.21, .05/-.18, .27/-.24
+      }
+        \node[
+          domain feature dot,
+          fill=green!65!black
+        ] at (\x, \y) {}; % 目标域特征点
+      %
+      \coordinate (targetFeature-north) at (targetFeatureCloud.north); % 上连接点
+      \coordinate (targetFeature-south) at (targetFeatureCloud.south); % 下连接点
+      \coordinate (targetFeature-west) at (targetFeatureCloud.west); % 左连接点
+      \coordinate (targetFeature-east) at (targetFeatureCloud.east); % 右连接点
+    }
+  },
+  % 源域和目标域特征对
+  pics/domain feature pair/.style={
+    code={ % 定义上下两个域特征圆
+      \pic at (0, .82) {source feature cloud}; % 源域特征
+      \pic at (0, -.82) {target feature cloud}; % 目标域特征
+      \draw[
+        decorate,
+        decoration={brace, mirror, amplitude=3pt},
+        draw=gray!70,
+        line width=.5pt
+      ] (.78, -1.47) -- (.78, 1.47); % 右侧花括号
+      \coordinate (domainFeature-east) at (1.02, 0); % 右侧输出点
+    }
+  }
+}

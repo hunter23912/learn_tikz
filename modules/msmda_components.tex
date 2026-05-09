@@ -1,0 +1,170 @@
+% 集中定义 MSMDA 专用组件
+\providecommand{\msmdaBranch}[3]{ % 前缀/编号/y坐标
+  \node[msmda dsfe] (#1DSFE) at (\xDSFE, #3) {DSFE$_{#2}$\\64$\to$32}; % 领域特定特征提取器
+  \node[msmda dsc] (#1DSC) at (\xDSC, #3) {DSC$_{#2}$\\Linear}; % 领域特定分类器
+  \node[dann output] (#1Pred) at (\xPred, #3) {Pred$_{#2}$}; % 分类预测输出
+  \draw[dann edge] (#1DSFE) -- (#1DSC); % DSFE连到DSC
+  \draw[dann edge] (#1DSC) -- (#1Pred); % DSC连到预测输出
+  \coordinate (#1-west) at (#1DSFE.west); % 分支左侧入口
+}
+
+% 多源分支到loss的灰色监督总线
+\providecommand{\msmdaLossBus}[5]{ % 上节点/中节点/下节点/loss节点/总线前缀
+  \coordinate (#5BusTop) at ([yshift=-1.4mm]#1.east -| #4); % 总线顶部锚点
+  \draw[draw=gray!75, line width=.55pt] ([yshift=-1.4mm]#1.east) -- (#5BusTop); % 上分支接入总线
+  \draw[draw=gray!75, line width=.55pt] ([yshift=-1.4mm]#2.east) -- ([yshift=-1.4mm]#2.east -| #4); % 中分支接入总线
+  \draw[draw=gray!75, line width=.55pt] ([yshift=-1.4mm]#3.east) -- ([yshift=-1.4mm]#3.east -| #4); % 下分支接入总线
+  \draw[msmda loss edge, line width=.55pt] (#5BusTop) -- (#4.north); % 总线向下指向loss
+}
+
+\tikzset{
+  % DSFE节点样式
+  msmda dsfe/.style={
+    rounded corners=2pt, % 轻微圆角
+    draw=teal!60!black, % 边框颜色
+    fill=teal!10, % 填充颜色
+    minimum width=15mm, % 最小宽度
+    minimum height=8mm, % 最小高度
+    align=center, % 居中换行
+    font=\scriptsize % 使用较小字号
+  },
+  % DSC分类头样式
+  msmda dsc/.style={
+    rounded corners=2pt, % 轻微圆角
+    draw=orange!70!black, % 边框颜色
+    fill=orange!13, % 填充颜色
+    minimum width=15mm, % 最小宽度
+    minimum height=8mm, % 最小高度
+    align=center, % 居中换行
+    font=\scriptsize % 使用较小字号
+  },
+  % MSMDA损失节点样式
+  msmda loss/.style={
+    rounded corners=2pt, % 轻微圆角
+    draw=gray!65, % 边框颜色
+    fill=gray!8, % 填充颜色
+    minimum width=17mm, % 最小宽度
+    minimum height=8mm, % 最小高度
+    align=center, % 居中换行
+    font=\scriptsize % 使用较小字号
+  },
+  % MSMDA训练目标面板样式
+  msmda loss panel/.style={
+    rounded corners=4pt, % 面板圆角
+    draw=gray!75, % 面板边框
+    dashed, % 面板虚线
+    fill=gray!2, % 面板浅色背景
+    inner sep=2.5mm % 面板内边距
+  },
+  % MSMDA训练目标小卡片样式
+  msmda loss card/.style={
+    rounded corners=2pt, % 小卡片圆角
+    draw=gray!65, % 小卡片边框
+    fill=gray!8, % 小卡片背景
+    minimum width=24mm, % 小卡片宽度
+    minimum height=10mm, % 小卡片高度
+    align=center, % 文本居中
+    font=\scriptsize % 使用较小字号
+  },
+  % 论文风格loss小框
+  msmda paper loss/.style={
+    rounded corners=2pt, % 小圆角
+    draw=orange!75!black, % 参考论文中的橙色边框
+    fill=orange!5, % 浅橙色背景
+    minimum width=14mm, % loss框宽度
+    minimum height=8mm, % loss框高度
+    align=center, % 文本居中
+    font=\scriptsize % 使用较小字号
+  },
+  % loss监督箭头样式
+  msmda loss edge/.style={
+    -{Latex[length=1.4mm]}, % 小箭头
+    draw=gray!70, % 灰色监督线
+    line width=.45pt % 监督线宽
+  },
+  % MSMDA共享CFE组件
+  pics/msmda shared cfe/.style={
+    code={ % 定义MSMDA共享特征提取器
+      \begin{scope}[scale=.48, transform shape] % 缩小CFE细节模块
+        \pic {cfe module}; % 引用CFE模块
+      \end{scope}
+      \node[fit=(cfebox), inner sep=0pt] (msmdaCFE) {}; % 共享CFE区域
+      % 多个输入连接点：三个源域和一个目标域
+      \coordinate (msmda-cfe-s1-west) at ([yshift=6mm]msmdaCFE.west); % Source 1入口
+      \coordinate (msmda-cfe-s2-west) at ([yshift=2mm]msmdaCFE.west); % Source 2入口
+      \coordinate (msmda-cfe-sk-west) at ([yshift=-2mm]msmdaCFE.west); % Source K入口
+      \coordinate (msmda-cfe-tgt-west) at ([yshift=-6mm]msmdaCFE.west); % Target入口
+      % 输出连接点：共享特征进入各个DSFE分支
+      \coordinate (msmda-cfe-b1-east) at ([yshift=5mm]msmdaCFE.east); % DSFE 1出口
+      \coordinate (msmda-cfe-b2-east) at ([yshift=0mm]msmdaCFE.east); % DSFE 2出口
+      \coordinate (msmda-cfe-bk-east) at ([yshift=-5mm]msmdaCFE.east); % DSFE K出口
+      \coordinate (msmda-cfe-loss-east) at ([yshift=-8mm]msmdaCFE.east); % 损失分支出口
+    }
+  },
+  % MSMDA MMD损失组件
+  pics/msmda mmd loss/.style={
+    code={ % 定义源域-目标域MMD对齐损失
+      \begin{scope}[scale=.42, transform shape] % 缩小域特征点云
+        \pic at (0, 0) {domain feature pair}; % 源域/目标域特征对
+      \end{scope}
+      \node[msmda loss] (mmdLossOut) at (1.65, 0) {MMD\\Loss}; % MMD损失输出
+      \draw[dann confuse edge] (domainFeature-east) -- (mmdLossOut.west); % 点云到MMD损失
+      \coordinate (msmda-mmd-west) at (-.35, 0); % MMD入口点
+    }
+  },
+  % MSMDA目标域一致性损失组件
+  pics/msmda discrepancy loss/.style={
+    code={ % 定义目标域多DSFE一致性损失
+      \begin{scope}[scale=.20, transform shape, name prefix=discA-]
+        \pic at (-.55, .30) {target feature cloud}; % 目标特征1
+      \end{scope}
+      \begin{scope}[scale=.20, transform shape, name prefix=discB-]
+        \pic at (0, 0) {target feature cloud}; % 目标特征2
+      \end{scope}
+      \begin{scope}[scale=.20, transform shape, name prefix=discC-]
+        \pic at (.55, -.30) {target feature cloud}; % 目标特征K
+      \end{scope}
+      \draw[
+        decorate,
+        decoration={brace, mirror, amplitude=3pt},
+        draw=gray!70,
+        line width=.5pt
+      ] (.82, -.58) -- (.82, .58); % 右侧花括号
+      \node[msmda loss] (discLossOut) at (1.80, 0) {Discrepancy\\Loss}; % 差异损失输出
+      \draw[dann confuse edge] (.98, 0) -- (discLossOut.west); % 特征一致性到损失
+      \coordinate (msmda-disc-west) at (-.75, 0); % 差异损失入口点
+    }
+  },
+  % MSMDA训练目标面板
+  pics/msmda loss panel/.style={
+    code={ % 将MMD和Discrepancy统一放入训练目标区域
+      \node[
+        msmda loss panel,
+        minimum width=72mm,
+        minimum height=19mm
+      ] (msmdaLossPanel) at (0, 0) {}; % 训练目标外框
+      %
+      \node[
+        anchor=south west,
+        font=\tiny,
+        text=black
+      ] at ([xshift=1mm,yshift=.4mm]msmdaLossPanel.north west) {Training objectives}; % 面板标题
+      %
+      \node[msmda loss card] (mmdObjective) at (-1.80, 0) {MMD\\Alignment}; % MMD对齐目标，负值越大越靠左
+      \node[msmda loss card] (discObjective) at (1.80, 0) {Discrepancy\\Loss}; % 分类器差异目标，正值越大越靠右
+      %
+      \begin{scope}[shift={([xshift=-7.2mm]mmdObjective.center)}, scale=.16, transform shape]
+        \pic at (0, .45) {source feature cloud}; % MMD中的源域特征
+        \pic at (0, -.45) {target feature cloud}; % MMD中的目标域特征
+      \end{scope}
+      \begin{scope}[shift={([xshift=-7.2mm]discObjective.center)}, scale=.13, transform shape]
+        \pic at (-.45, .30) {target feature cloud}; % 差异损失中的目标特征1
+        \pic at (0, 0) {target feature cloud}; % 差异损失中的目标特征2
+        \pic at (.45, -.30) {target feature cloud}; % 差异损失中的目标特征K
+      \end{scope}
+      %
+      \coordinate (msmda-mmd-in) at ([xshift=-3mm]mmdObjective.north); % MMD入口
+      \coordinate (msmda-disc-in) at ([xshift=-3mm]discObjective.north); % 差异损失入口
+    }
+  }
+}

@@ -1,0 +1,97 @@
+% 完整 MSMDA 多源域适应模型图
+% main.tex 只需要 \input{models/msmda.tex} 即可绘制该模型
+
+\input{modules/cube.tex} % 引入伪3D特征片
+\input{modules/cfe.tex} % 引入CFE特征压缩模块
+\input{modules/eeg_signal.tex} % 引入EEG输入卡片
+\input{modules/model_common.tex} % 引入通用节点和箭头样式
+\input{modules/domain_feature.tex} % 引入源域/目标域特征点云
+\input{modules/msmda_components.tex} % 引入MSMDA专用组件
+
+\begin{tikzpicture} % MSMDA模型图开始
+  % 横向布局参数：调小相邻x坐标差值，就能整体收窄图
+  \def\xData{0} % 多源/目标输入模块的x坐标
+  \def\xCFE{1.8} % 共享CFE模块的x坐标
+  \def\xDSFE{5} % DSFE列表的x坐标
+  \def\xDSC{7} % DSC分类头列表的x坐标，调大可增大DSFE到DSC间距
+  \def\xPred{9} % 分类预测输出的x坐标，调大可增大DSC到Pred间距
+  \def\xMMDLoss{6} % MMD loss的x坐标，位于DSFE和DSC之间
+  \def\xDiscLoss{7.9} % Discrepancy loss的x坐标，位于DSC和Pred之间
+  \def\xClsLoss{10} % Cls loss的x坐标，位于Pred右侧
+  %
+  % 纵向布局参数：控制输入、分支、损失的位置
+  \def\ySOne{2.35} % Source 1输入y坐标
+  \def\ySTwo{1.15} % Source 2输入y坐标
+  \def\ySK{-.50} % Source K输入y坐标，调小可给Source省略号留空间
+  \def\yTgt{-1.75} % Target输入y坐标，跟随Source K下移
+  \def\yBOne{1.80} % DSFE 1分支y坐标
+  \def\yBTwo{.35} % DSFE 2分支y坐标
+  \def\yBK{-1.25} % DSFE K分支y坐标，调小可给分支省略号留空间
+  \def\yLoss{-2.50} % loss小框的y坐标，调小可整体下移
+  \def\yTotalLoss{-3.15} % 总损失公式的y坐标
+  %
+  % 多源域和目标域输入
+  \begin{scope}[shift={(\xData, \ySOne)}] % Source 1位置
+    \eegDataCard{sourceOneData}{Source 1 data}{dann source data} % Source 1数据
+    \coordinate (source-one-east) at (sourceOneData.east); % Source 1连接点
+  \end{scope}
+  \begin{scope}[shift={(\xData, \ySTwo)}] % Source 2位置
+    \eegDataCard{sourceTwoData}{Source 2 data}{dann source data} % Source 2数据
+    \coordinate (source-two-east) at (sourceTwoData.east); % Source 2连接点
+  \end{scope}
+  \node[font=\scriptsize] (sourceDots) at (\xData, .38) {$\vdots$}; % Source输入省略号
+  \begin{scope}[shift={(\xData, \ySK)}] % Source K位置
+    \eegDataCard{sourceKData}{Source K data}{dann source data} % Source K数据
+    \coordinate (source-k-east) at (sourceKData.east); % Source K连接点
+  \end{scope}
+  \begin{scope}[shift={(\xData, \yTgt)}] % Target位置
+    \eegDataCard{targetData}{Target data}{dann target data} % Target数据
+    \coordinate (target-east) at (targetData.east); % Target连接点
+  \end{scope}
+  %
+  \pic at (\xCFE, 0) {msmda shared cfe}; % 共享CFE特征提取器
+  %
+  % 每个源域对应一个DSFE和一个DSC分类头
+  \msmdaBranch{one}{1}{\yBOne} % DSFE 1 + DSC 1
+  \msmdaBranch{two}{2}{\yBTwo} % DSFE 2 + DSC 2
+  \node[font=\scriptsize] (branchDots) at (\xDSFE, -.4) {$\vdots$}; % DSFE分支省略号
+  \node[font=\scriptsize] (dscDots) at (\xDSC, -.4) {$\vdots$}; % DSC分支省略号
+  \node[font=\scriptsize] (predDots) at (\xPred, -.4) {$\vdots$}; % Pred分支省略号
+  \msmdaBranch{k}{K}{\yBK} % DSFE K + DSC K
+  %
+  % 论文风格loss小框：挂在对应信息流下方，而不是单独放大面板
+  \node[msmda paper loss] (mmdLoss) at (\xMMDLoss, \yLoss) {mmd\\loss}; % DSFE特征对齐损失
+  \node[msmda paper loss] (discLoss) at (\xDiscLoss, \yLoss) {disc\\loss}; % DSC输出差异损失
+  \node[msmda paper loss] (clsLoss) at (\xClsLoss, \yLoss) {cls\\loss}; % 预测标签分类损失
+  % \node[
+  %   font=\scriptsize,
+  %   text=black,
+  %   align=center
+  % ] (totalLoss) at (8.05, \yTotalLoss) {total loss = mmd loss + disc loss + cls loss}; % 总损失公式
+  %
+  % 输入到共享CFE
+  \draw[dann edge] (source-one-east) -- (msmda-cfe-s1-west); % Source 1进入CFE
+  \draw[dann edge] (source-two-east) -- (msmda-cfe-s2-west); % Source 2进入CFE
+  \draw[dann edge] (source-k-east) -- (msmda-cfe-sk-west); % Source K进入CFE
+  \draw[dann edge] (target-east) -- (msmda-cfe-tgt-west); % Target进入CFE
+  %
+  % CFE共享特征进入各个源域专属DSFE
+  \draw[dann edge] (msmda-cfe-b1-east) -- (one-west); % CFE进入DSFE 1
+  \draw[dann edge] (msmda-cfe-b2-east) -- (two-west); % CFE进入DSFE 2
+  \draw[dann edge] (msmda-cfe-bk-east) -- (k-west); % CFE进入DSFE K
+  %
+  % loss监督连接：公共宏内部用 -| 取loss节点所在列，避免分支y坐标调整后总线错位
+  \msmdaLossBus{oneDSFE}{twoDSFE}{kDSFE}{mmdLoss}{mmd} % DSFE输出接入MMD loss
+  \msmdaLossBus{oneDSC}{twoDSC}{kDSC}{discLoss}{disc} % DSC输出接入Discrepancy loss
+  \msmdaLossBus{onePred}{twoPred}{kPred}{clsLoss}{cls} % Pred输出接入Cls loss
+  %
+  \node[font=\small, text=black] (titleNode) at (\xCFE, 2.55) {}; % 图标题锚点
+  \begin{scope}[on background layer] % 只创建模型区域锚点
+    \node[
+      inner sep=4mm,
+      fit=(titleNode)(sourceOneData)(sourceTwoData)(sourceKData)(targetData)(msmdaCFE)(oneDSFE)(oneDSC)(onePred)(twoDSFE)(twoDSC)(twoPred)(kDSFE)(kDSC)(kPred)(mmdLoss)(discLoss)(clsLoss)
+    ] (modelBox) {}; % 上方模型区域
+  \end{scope}
+  %
+  \domainFeatureLegend{modelBox}{6mm} % 源域/目标域特征图例
+\end{tikzpicture}

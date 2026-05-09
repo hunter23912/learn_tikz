@@ -1,0 +1,14 @@
+% 主文件：只作为模型图入口
+\documentclass[tikz,border=8pt]{standalone} % 独立编译TikZ图
+
+\usetikzlibrary{arrows.meta,backgrounds,calc,decorations.pathreplacing,fit,matrix,positioning} % 加载TikZ功能库
+
+\begin{document} % 正文开始
+
+% 选择一个完整模型图引入即可
+% \input{models/dan_mmd.tex} % 绘制DAN-MMD模型
+% \input{models/dann.tex} % 绘制DANN模型
+% \input{models/msmda.tex} % 绘制MSMDA多源域适应模型
+\input{models/dmmr.tex} % 绘制DMMR模型
+
+\end{document} % 正文结束

@@ -1,0 +1,169 @@
+% 完整 DMMR 模型图
+% main.tex 可改为 \input{models/dmmr.tex} 来绘制该模型
+
+\input{modules/eeg_signal.tex} % 引入EEG输入卡片
+\input{modules/model_common.tex} % 引入通用节点和箭头样式
+\input{modules/dmmr_components.tex} % 引入DMMR专用组件
+
+\begin{tikzpicture}[
+  node distance=8mm and 11mm
+] % DMMR模型图开始
+  % 全局间距参数：主要修改这些值即可调整布局
+  \def\stepGap{4mm} % 预处理模块横向间距
+  \def\preGap{4mm} % 预处理到预训练区域的间距
+  \def\mmrGap{4mm} % Encoder到Decoder列、Decoder到重建列的间距
+  \def\mixGap{8mm} % Mix到第二阶段Encoder的间距
+  \def\mixEncGap{3mm} % 第二阶段Encoder到Decoder列的间距
+  \def\mixDecGap{4mm} % 第二阶段多个Decoder的横向间距
+  \def\mixReconGap{4mm} % 第二阶段Decoder到recon EEG的间距
+  \def\mixBraceGap{1mm} % 第二阶段花括号与Decoder的间距
+  \def\mixLabelGap{11mm} % Lrecon标签与花括号的间距
+  \def\lossGap{4mm} % 重建输出到loss列的间距
+  \def\decoderGap{8mm} % 多个Decoder的纵向间距
+  \def\dgdannGap{10mm} % DG-DANN距离重建分支的垂直间距
+  \def\dgdannInnerXSep{3mm} % DG-DANN外框横向内边距，pretrain会跟随自适应
+  \def\dgdannInnerYSep{4mm} % DG-DANN外框纵向内边距，pretrain会跟随自适应
+  \def\preShiftX{0mm} % 整个预训练区域的横向总偏移
+  \def\preShiftY{0mm} % 整个预训练区域的纵向总偏移
+  \def\fineGap{15mm} % Fine-tuning距离Pre-training的垂直间距
+  \def\fineBaseX{-9mm} % Fine-tuning区域的独立横向锚点
+  \def\fineBaseY{-40mm} % Fine-tuning区域的独立纵向锚点
+  %
+  % 输入和预处理流程：从左到右用相对定位排列
+  \begin{scope}[shift={(\preShiftX,\preShiftY)}]
+  \eegDataCard{rawSample}{Subject i}{dann source data} % 原始EEG样本
+  \coordinate (raw-east) at (rawSample.east); % 原始样本连接点
+  \node[dmmr prep, right=\stepGap of rawSample] (shuffleNode) {Time-step\\Shuffle}; % 时间步打乱
+  \node[dmmr attention, right=\stepGap of shuffleNode] (abpNode) {ABP}; % Attention Based Pooling
+  \node[dann source data, minimum width=24mm, minimum height=12mm, right=\stepGap of abpNode] (weightedSample) {}; % 加权样本外框
+  \node[font=\scriptsize] at ([yshift=2.4mm]weightedSample.center) {Weighted Sample}; % 加权样本标签
+  \begin{scope}[shift={([yshift=-2mm]weightedSample.center)}, scale=.62]
+    \pic {eeg signal}; % 加权样本波形
+  \end{scope}
+  \coordinate (weighted-east) at (weightedSample.east); % 加权样本连接点
+  \end{scope}
+  %
+  % DMMR Pre-training主体：后续模块相对weightedSample定位，因此会跟随preShift整体移动
+  \node[dmmr encoder, right=\preGap of weightedSample] (encoderNode) {Encoder}; % 共享编码器
+  \node[font=\scriptsize, text=black] (sharedFeatureText) at ([yshift=-4mm]encoderNode.south) {}; % 编码器说明
+  \node[dmmr decoder, right=\mmrGap of encoderNode] (decI) {Decoder\\$D_{si}$}; % Subject i解码器
+  \node[dmmr decoder, above=\decoderGap of decI] (decOne) {Decoder\\$D_{s1}$}; % Subject 1解码器
+  \node[dmmr decoder, below=\decoderGap of decI] (decN) {Decoder\\$D_{sn}$}; % Subject n解码器
+  \node[font=\scriptsize] at ($(decOne)!0.5!(decI)$) {$\vdots$}; % Decoder上方省略号
+  \node[font=\scriptsize] at ($(decI)!0.5!(decN)$) {$\vdots$}; % Decoder下方省略号
+  %
+  \node[dmmr mix] (mixNode) at ([xshift=\mixGap]decI.east) {Mix}; % 第一阶段Decoder后接Mix节点
+  \node[dmmr encoder, right=\mixEncGap of mixNode] (mixEncoder) {Encoder}; % 第二阶段编码器
+  \node[dmmr decoder, right=\mixDecGap of mixEncoder] (mixDecI) {Decoder\\$D_{si}$}; % 第二阶段解码器
+  \node[dmmr decoder, above=\decoderGap of mixDecI] (mixDecOne) {Decoder\\$D_{s1}$}; % 二阶段解码器1
+  \node[dmmr decoder, below=\decoderGap of mixDecI] (mixDecN) {Decoder\\$D_{sn}$}; % 二阶段解码器n
+  \node[font=\scriptsize] at ($(mixDecOne)!0.5!(mixDecI)$) {$\vdots$}; % 二阶段上方省略号
+  \node[font=\scriptsize] at ($(mixDecI)!0.5!(mixDecN)$) {$\vdots$}; % 二阶段下方省略号
+  \draw[dmmr recon edge] (decOne.east) -- (mixNode.west); % 第一阶段Decoder 1到Mix
+  \draw[dmmr recon edge] (decI.east) -- (mixNode.west); % 第一阶段Decoder i到Mix
+  \draw[dmmr recon edge] (decN.east) -- (mixNode.west); % 第一阶段Decoder n到Mix
+  \draw[dmmr recon edge] (mixNode.east) -- (mixEncoder.west); % Mix到第二阶段Encoder
+  \draw[dmmr recon edge] (mixEncoder.east) -- (mixDecOne.west); % 第二阶段Encoder到Decoder 1
+  \draw[dmmr recon edge] (mixEncoder.east) -- (mixDecI.west); % 第二阶段Encoder到Decoder i
+  \draw[dmmr recon edge] (mixEncoder.east) -- (mixDecN.west); % 第二阶段Encoder到Decoder n
+  \begin{scope}[shift={([xshift=\mixReconGap]mixDecOne.east)}]
+    \dmmrReconCard{reconOne}{\shortstack{recon $EEG_{1}$}}{dmmr recon output} % 第二阶段recon EEG 1
+  \end{scope}
+  \begin{scope}[shift={([xshift=\mixReconGap]mixDecI.east)}]
+    \dmmrReconCard{reconI}{\shortstack{recon $EEG_{i}$}}{dmmr recon output} % 第二阶段recon EEG i
+  \end{scope}
+  \begin{scope}[shift={([xshift=\mixReconGap]mixDecN.east)}]
+    \dmmrReconCard{reconN}{\shortstack{recon $EEG_{n}$}}{dmmr recon output} % 第二阶段recon EEG n
+  \end{scope}
+  \draw[dmmr recon edge] (mixDecOne.east) -- (reconOne.west); % 第二阶段Decoder 1到recon EEG 1
+  \draw[dmmr recon edge] (mixDecI.east) -- (reconI.west); % 第二阶段Decoder i到recon EEG i
+  \draw[dmmr recon edge] (mixDecN.east) -- (reconN.west); % 第二阶段Decoder n到recon EEG n
+  \coordinate (reconBraceTop) at ([xshift=\mixBraceGap]reconOne.north east);
+  \coordinate (reconBraceBottom) at ([xshift=\mixBraceGap]reconN.south east);
+  \draw[
+    decorate,
+    decoration={brace, mirror, amplitude=3pt},
+    draw=gray!70,
+    line width=.5pt
+  ] (reconBraceBottom) -- (reconBraceTop)
+    node[midway, xshift=\mixLabelGap, dmmr loss] (reconLossLabel) {$L_{recon}$}; % 第二阶段recon EEG汇总loss方框
+  \node[dmmr sum, right=\lossGap of reconLossLabel] (preSum) {$+$}; % Lrecon和Ladv相加
+  \node[dmmr total loss, below=4mm of preSum] (preLoss) {$L_{pre}$}; % 总损失方框
+  \coordinate (reconBraceMid) at ($(reconBraceTop)!0.5!(reconBraceBottom)$);
+  \draw[dmmr recon edge] ([xshift=1.5mm]reconBraceMid) -- (reconLossLabel.west); % 从花括号右侧精确指向Lrecon的绿色箭头
+  %
+  % DG-DANN对抗分支：基于Decoder上方锚点整体上移
+  \node[dann grl, minimum width=8mm, minimum height=6mm] (grlNode) at ([yshift=\dgdannGap]decOne.north) {GRL}; % 梯度反转层
+  \node[dmmr subject discriminator, right=\stepGap of grlNode] (subjectDisc) {Subject\\Discriminator}; % 主体判别器
+  \node[dmmr loss, right=\stepGap of subjectDisc] (advLoss) {$L_{adv}$}; % 对抗损失
+  %
+  % 主流程箭头
+  \draw[dmmr edge] (raw-east) -- (shuffleNode.west); % 原始样本到时间步打乱
+  \draw[dmmr edge] (shuffleNode.east) -- (abpNode.west); % 打乱样本到ABP
+  \draw[dmmr edge] (abpNode.east) -- (weightedSample.west); % ABP到加权样本
+  \draw[dmmr edge] (weighted-east) -- (encoderNode.west); % 加权样本到编码器
+  %
+  % 第一阶段编码器到Decoder分支
+  \draw[dmmr recon edge] (encoderNode.east) -- (decOne.west); % 编码特征到Decoder 1
+  \draw[dmmr recon edge] (encoderNode.east) -- (decI.west); % 编码特征到Decoder i
+  \draw[dmmr recon edge] (encoderNode.east) -- (decN.west); % 编码特征到Decoder n
+  \draw[dmmr recon edge] (reconLossLabel.east) -- (preSum.west); % Lrecon进入加法节点
+  \draw[dmmr recon edge] (preSum.south) -- (preLoss.north); % 加法节点输出Lpre
+  %
+  % 对抗分支箭头
+  \draw[dmmr adv edge] (encoderNode.north) |- (grlNode.west); % 编码特征进入GRL
+  \draw[dmmr adv edge] (grlNode.east) -- (subjectDisc.west); % GRL到主体判别器
+  \draw[dmmr adv edge] (subjectDisc.east) -- (advLoss.west); % 主体判别器到对抗损失
+  \draw[dmmr adv edge] (advLoss.east) -| (preSum.north); % Ladv进入加法节点
+  %
+  % 背景分区：pretrainBox 的 fit 节点决定上方子图整体范围；fineInput 的锚点决定下方子图整体位置
+  \begin{scope}[on background layer] % 背景层
+    \node[
+      inner xsep=\dgdannInnerXSep,
+      inner ysep=\dgdannInnerYSep,
+      fit=(grlNode)(subjectDisc)(advLoss)
+    ] (dgdannFit) {}; % DG-DANN外框尺寸锚点，供Pre-training自适应包含
+    \node[
+      dmmr stage,
+      inner xsep=3mm,
+      inner ysep=3mm,
+      fit=(rawSample)(shuffleNode)(abpNode)(weightedSample)(encoderNode)(sharedFeatureText)(decOne)(decI)(decN)(reconOne)(reconI)(reconN)(mixNode)(mixEncoder)(mixDecOne)(mixDecI)(mixDecN)(reconLossLabel)(preSum)(preLoss)(dgdannFit)
+    ] (pretrainBox) {}; % 扩大后的Pre-training区域
+    \node[
+      dmmr stage,
+      draw=gray!60,
+      fill=gray!15,
+      fill opacity=.90,
+      inner xsep=\dgdannInnerXSep,
+      inner ysep=\dgdannInnerYSep,
+      fit=(grlNode)(subjectDisc)(advLoss)
+    ] (dgdannBox) {}; % DG-DANN对抗区域
+  \end{scope}
+  \node[font=\scriptsize\bfseries, anchor=west] at ([xshift=1mm,yshift=-3mm]pretrainBox.north west) {Pre-training}; % 预训练标题
+  \node[font=\fontsize{6pt}{7pt}\selectfont\bfseries, anchor=west] at ([xshift=1mm,yshift=-2mm]dgdannBox.north west) {DG-DANN}; % DG-DANN标题
+  %
+  % Fine-tuning分支：使用独立锚点，避免跟随pretrainBox一起移动
+  \coordinate (fineOrigin) at (\fineBaseX, \fineBaseY); % Fine-tuning独立锚点
+  \node[dmmr prep, anchor=west] (fineInput) at (fineOrigin) {EEG\\Sample}; % 微调输入
+  \node[dmmr attention, right=\stepGap of fineInput] (fineABP) {ABP}; % 复用注意力层
+  \node[dmmr encoder, right=\stepGap of fineABP] (fineEncoder) {Pretrained\\Encoder}; % 复用预训练编码器
+  \node[dann head, right=\stepGap of fineEncoder] (fineClassifier) {Classifier\\64$\to$3}; % 微调分类头
+  \node[dann output, right=\stepGap of fineClassifier] (finePred) {Predicted\\Label}; % 情绪预测
+  \node[font=\scriptsize, text=black, anchor=west] at ([xshift=4mm]finePred.east) {}; % 微调说明
+  %
+  \draw[dmmr edge] (fineInput.east) -- (fineABP.west); % 微调输入到Attention
+  \draw[dmmr edge] (fineABP.east) -- (fineEncoder.west); % Attention到Encoder
+  \draw[dmmr edge] (fineEncoder.east) -- (fineClassifier.west); % Encoder到分类层
+  \draw[dmmr edge] (fineClassifier.east) -- (finePred.west); % 分类层到情绪预测
+  %
+  \begin{scope}[on background layer] % 背景层
+    \node[
+      dmmr stage,
+      fill=orange!5,
+      inner xsep=3mm,
+      inner ysep=3mm,
+      fit=(fineInput)(fineABP)(fineEncoder)(fineClassifier)(finePred)
+    ] (fineBox) {}; % 微调区域
+  \end{scope}
+  \node[font=\scriptsize\bfseries, anchor=west] at ([xshift=1mm,yshift=-3mm]fineBox.north west) {Fine-tuning}; % 微调标题
+\end{tikzpicture}

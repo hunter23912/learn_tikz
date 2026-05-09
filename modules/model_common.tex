@@ -1,0 +1,172 @@
+% 集中定义模型图通用样式和通用组件
+\tikzset{
+  % 前向传播实线箭头
+  dann edge/.style={
+    -{Latex[length=1.5mm]}, % 箭头样式
+    draw=teal!50!black, % 连线颜色
+    line width=.55pt % 连线宽度
+  },
+  % 域适配/混淆损失虚线箭头
+  dann confuse edge/.style={
+    -{Latex[length=1.5mm]}, % 箭头样式
+    draw=purple!65!black, % 连线颜色
+    line width=.55pt, % 连线宽度
+    % dashed % 虚线表示域混淆或分布对齐
+  },
+  % 输入数据节点基础样式
+  dann data/.style={
+    rounded corners=2pt, % 轻微圆角
+    draw=blue!55!black, % 默认边框颜色
+    fill=blue!9, % 默认填充颜色
+    minimum width=18mm, % 最小宽度
+    minimum height=10mm, % 最小高度
+    align=center, % 居中换行
+    font=\scriptsize % 使用较小字号
+  },
+  % Source数据节点样式
+  dann source data/.style={
+    dann data, % 继承数据节点基础样式
+    draw=blue!75!black, % 源域边框色
+    fill=blue!10 % 源域填充色
+  },
+  % Target数据节点样式
+  dann target data/.style={
+    dann data, % 继承数据节点基础样式
+    draw=green!50!black, % 目标域边框色
+    fill=green!12 % 目标域填充色
+  },
+  % 分类头节点样式
+  dann head/.style={
+    rounded corners=2pt, % 轻微圆角
+    draw=orange!70!black, % 边框颜色
+    fill=orange!13, % 填充颜色
+    minimum width=18mm, % 最小宽度
+    minimum height=9mm, % 最小高度
+    align=center, % 居中换行
+    font=\scriptsize % 使用较小字号
+  },
+  % GRL节点样式
+  dann grl/.style={
+    rounded corners=2pt, % 轻微圆角
+    draw=purple!70!black, % 边框颜色
+    fill=purple!12, % 填充颜色
+    minimum width=16mm, % 最小宽度
+    minimum height=9mm, % 最小高度
+    align=center, % 居中换行
+    font=\scriptsize % 使用较小加粗字号
+  },
+  % 域判别器节点样式
+  dann domain/.style={
+    rounded corners=2pt, % 轻微圆角
+    draw=red!65!black, % 边框颜色
+    fill=red!10, % 填充颜色
+    minimum width=19mm, % 最小宽度
+    minimum height=9mm, % 最小高度
+    align=center, % 居中换行
+    font=\scriptsize % 使用较小字号
+  },
+  % 输出节点样式
+  dann output/.style={
+    rounded corners=2pt, % 轻微圆角
+    draw=gray!65, % 边框颜色
+    fill=gray!8, % 填充颜色
+    minimum width=17mm, % 最小宽度
+    minimum height=8mm, % 最小高度
+    align=center, % 居中换行
+    font=\scriptsize % 使用较小字号
+  },
+  % 简化版共享CFE矩形样式
+  dann cfe/.style={
+    rounded corners=3pt, % 圆角
+    draw=teal!60!black, % 边框颜色
+    fill=teal!10, % 填充颜色
+    minimum width=24mm, % 最小宽度
+    minimum height=16mm, % 最小高度
+    align=center, % 居中换行
+    font=\scriptsize % 使用较小加粗字号
+  },
+  % Source EEG 输入组件
+  pics/source eeg/.style={
+    code={ % 定义Source EEG模块
+      \eegDataCard{sourceData}{Source data}{dann source data} % 源域数据卡片
+      \coordinate (source-east) at (sourceData.east); % 右侧连接点
+    }
+  },
+  % Target EEG 输入组件
+  pics/target eeg/.style={
+    code={ % 定义Target EEG模块
+      \eegDataCard{targetData}{Target data}{dann target data} % 目标域数据卡片
+      \coordinate (target-east) at (targetData.east); % 右侧连接点
+    }
+  },
+  % 简化版共享CFE组件
+  pics/shared cfe/.style={
+    code={ % 定义共享特征提取器
+      \node[dann cfe] (sharedCFE) at (0, 0) {Shared CFE\\310$\to$64}; % 共享CFE矩形
+      \node[font=\scriptsize, text=black] at (0, -.92) {Feature Extractor}; % CFE说明
+      \coordinate (cfe-source-west) at ([yshift=2.5mm]sharedCFE.west); % 源域输入连接点
+      \coordinate (cfe-target-west) at ([yshift=-2.5mm]sharedCFE.west); % 目标域输入连接点
+      \coordinate (cfe-emo-east) at ([yshift=2.5mm]sharedCFE.east); % 情绪分支输出点
+      \coordinate (cfe-domain-east) at ([yshift=-2.5mm]sharedCFE.east); % 域分支输出点
+    }
+  },
+  % 情绪分类器组件
+  pics/emotion classifier/.style={
+    code={ % 定义情绪分类器
+      \node[dann head] (emoHead) at (0, 0) {Emotion\\Classifier}; % 线性分类层
+      \node[dann output] (emoOut) at (2.25, 0) {Predicted\\Label}; % 情感预测
+      \draw[dann edge] (emoHead) -- (emoOut); % 分类器到输出
+      \coordinate (emo-west) at (emoHead.west); % 左侧连接点
+    }
+  },
+  % GRL组件
+  pics/grl/.style={
+    code={ % 定义梯度反转层
+      \node[dann grl] (grlNode) at (0, 0) {GRL}; % 梯度反转层
+      \coordinate (grl-west) at (grlNode.west); % 左侧连接点
+      \coordinate (grl-east) at (grlNode.east); % 右侧连接点
+    }
+  },
+  % 域判别器组件
+  pics/domain discriminator/.style={
+    code={ % 定义域判别器
+      \node[dann domain] (domainHead) at (0, 0) {Domain\\Discriminator}; % 域判别器
+      \node[dann output] (domainOut) at (2.45, 0) {Source / Target\\Confusion}; % 域混淆输出
+      \draw[dann confuse edge] (domainHead) -- (domainOut); % 域判别到混淆
+      \coordinate (domain-west) at (domainHead.west); % 左侧连接点
+    }
+  }
+}
+
+% 通用源域/目标域特征图例
+\providecommand{\domainFeatureLegend}[2]{ % 锚点节点/下方距离
+  \matrix (legendContent) [
+    below=#2 of #1,
+    column sep=2mm,
+    inner sep=0pt,
+    nodes={inner sep=0pt, anchor=center},
+    ampersand replacement=\&
+  ] {
+    \node[minimum size=6mm] (legendSourceIcon) {}; \&
+    \node[anchor=west, font=\scriptsize, text=gray!95] (legendSourceText) {Source feature}; \&
+    \node[minimum width=5mm] {}; \&
+    \node[minimum size=6mm] (legendTargetIcon) {}; \&
+    \node[anchor=west, font=\scriptsize, text=gray!95] (legendTargetText) {Target feature}; \\
+  }; % 图例内容矩阵
+  \begin{scope}[shift={(legendSourceIcon.center)}, scale=.30, transform shape, name prefix=legendSource-]
+    \pic {source feature cloud}; % 源域特征图例
+  \end{scope}
+  \begin{scope}[shift={(legendTargetIcon.center)}, scale=.30, transform shape, name prefix=legendTarget-]
+    \pic {target feature cloud}; % 目标域特征图例
+  \end{scope}
+  \begin{scope}[on background layer]
+    \node[
+      rounded corners=4pt,
+      draw=gray!85,
+      dashed,
+      inner xsep=5mm,
+      inner ysep=2mm,
+      fit=(legendContent)
+    ] (legendBox) {}; % 图例外框
+  \end{scope}
+}

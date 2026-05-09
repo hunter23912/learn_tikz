@@ -1,0 +1,47 @@
+% 集中定义 CFE 的 TikZ 样式和模块
+\tikzset{
+  % CFE连线样式
+  cfe edge/.style={
+    -{Latex[length=2mm]}, % 箭头样式
+    draw=teal!50!black, % 连线颜色
+    line width=.55pt % 连线宽度
+  },
+  % CFE模块外框样式
+  cfe frame/.style={
+    rounded corners=6pt, % 外框圆角
+    draw=gray!45, % 外框边框色
+    fill=white, % 外框背景色
+    inner sep=3.2mm % 外框内边距，调小可减少CFE留白
+  },
+  % 定义 CFE 模块的样式
+  pics/cfe module/.style={
+    code={ % 定义可复用的 CFE 模块
+      % 四个x坐标控制特征片之间的横向距离
+      % 数值越接近，特征片越靠拢，越像堆叠效果
+      \def\xin{0} % 输入片x坐标
+      \def\xfone{1.35} % 256片x坐标
+      \def\xftwo{2.45} % 128片x坐标
+      \def\xfthree{3.35} % 64片x坐标
+      %
+      % \cfeCuboid参数：名字/x/正面宽/高度/厚度/标签/颜色
+      % 高度和厚度决定片的大小，正面宽度决定片的薄厚感
+      \cfeCuboid{input310}{\xin}{.1}{2.00}{1.5}{310}{yellow} % 输入310维方片
+      \cfeCuboid{feat256}{\xfone}{.09}{1.60}{1.1}{256}{yellow} % 特征256维方片
+      \cfeCuboid{feat128}{\xftwo}{.08}{1.22}{0.72}{128}{yellow} % 特征128维方片
+      \cfeCuboid{feat64}{\xfthree}{.07}{.86}{0.42}{64}{yellow} % 特征64维方片
+      %
+      \node[font=\scriptsize, text=black] at (1.95, -.75) {}; % 模块标签
+      %
+      \begin{scope}[on background layer] % 只把外框画到背景层
+        % fit列出所有特征片的边界点，外框会自动包住它们
+        \node[cfe frame, fit=(input310-fit-a)(input310-fit-b)(feat256-fit-a)(feat256-fit-b)(feat128-fit-a)(feat128-fit-b)(feat64-fit-a)(feat64-fit-b)] (cfebox) {}; % CFE外框
+      \end{scope}
+      %
+      \node[
+        anchor=south west, % 左下角作为定位点
+        font=\small, % 标题字号
+        text=black % 标题颜色
+      ] at ([xshift=2mm,yshift=1mm]cfebox.north west) {CFE Module}; % 模块标题
+    }
+  }
+}

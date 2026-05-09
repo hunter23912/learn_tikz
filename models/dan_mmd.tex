@@ -1,0 +1,83 @@
+% 完整 DAN-MMD 模型图
+% main.tex 只需要 \input{models/dan_mmd.tex} 即可绘制该模型
+
+\input{modules/cube.tex} % 引入伪3D特征片
+\input{modules/cfe.tex} % 引入CFE特征压缩模块
+\input{modules/eeg_signal.tex} % 引入EEG输入卡片
+\input{modules/model_common.tex} % 引入通用节点和箭头样式
+\input{modules/domain_feature.tex} % 引入源域/目标域特征点云
+
+\tikzset{
+  % MMD输出节点样式
+  dan loss output/.style={
+    rounded corners=2pt, % 轻微圆角
+    draw=gray!65, % 边框颜色
+    fill=gray!8, % 填充颜色
+    minimum width=15mm, % 最小宽度
+    minimum height=8mm, % 最小高度
+    align=center, % 居中换行
+    font=\scriptsize % 使用较小字号
+  },
+  % DAN-MMD共享CFE组件
+  pics/dan mmd shared cfe/.style={
+    code={ % 定义DAN-MMD共享特征提取器
+      % scale控制CFE细节模块在整张DAN-MMD图里的显示大小
+      \begin{scope}[scale=.48, transform shape] % 缩小CFE细节模块
+        \pic {cfe module}; % 引用CFE模块
+      \end{scope}
+      \node[fit=(cfebox), inner sep=0pt] (danCFE) {}; % 共享CFE区域
+      % 下面四个坐标是外部箭头连接点，都落在CFE外框边界上
+      \coordinate (dan-cfe-source-west) at ([yshift=4mm]danCFE.west); % 源域输入接外框
+      \coordinate (dan-cfe-target-west) at ([yshift=-4mm]danCFE.west); % 目标域输入接外框
+      \coordinate (dan-src-feature-east) at ([yshift=4mm]danCFE.east); % 源域特征从外框输出
+      \coordinate (dan-tgt-feature-east) at ([yshift=-4mm]danCFE.east); % 目标域特征从外框输出
+    }
+  },
+  % MMD损失组件
+  pics/dan mmd loss/.style={
+    code={ % 定义MMD损失模块
+      % scale控制两个特征点云的大小，位置由下方布局参数决定
+      \begin{scope}[scale=.62, transform shape] % 缩小域特征点云
+        \pic at (0, 0) {domain feature pair}; % MMD特征分布
+      \end{scope}
+      \node[dan loss output] (lossOut) at (1.85, 0) {MMD\\Loss}; % 损失输出
+      \draw[dann confuse edge] (domainFeature-east) -- (lossOut.west); % MMD到loss
+      \coordinate (mmd-west) at (-.40, 0); % 外部CFE到MMD的入口点
+    }
+  }
+}
+
+\begin{tikzpicture} % DAN-MMD模型图开始
+  % 横向布局参数：调小相邻x坐标差值，就能整体收窄图
+  \def\xData{0} % Source/Target输入模块的x坐标
+  \def\xCFE{2.45} % CFE模块的x坐标，越小越靠近输入
+  \def\xHead{6.35} % 情绪分类器的x坐标，越小越靠近CFE
+  \def\xMMD{6} % MMD模块的x坐标，越小越靠近CFE
+  %
+  % 纵向布局参数：控制上下分支的高度
+  \def\ySource{1.40} % Source输入模块的y坐标
+  \def\yTarget{-.40} % Target输入模块的y坐标
+  \def\yHead{1.45} % 情绪分类器分支的y坐标
+  \def\yMMD{-.55} % MMD损失分支的y坐标
+  %
+  \pic at (\xData, \ySource) {source eeg}; % 放置源域EEG输入
+  \pic at (\xData, \yTarget) {target eeg}; % 放置目标域EEG输入
+  \pic at (\xCFE, 0) {dan mmd shared cfe}; % 放置共享CFE特征提取器
+  \pic at (\xHead, \yHead) {emotion classifier}; % 放置情绪分类器和预测输出
+  \pic at (\xMMD, \yMMD) {dan mmd loss}; % 放置MMD特征分布和损失输出
+  %
+  \draw[dann edge] (source-east) -- (dan-cfe-source-west); % Source data直线进入CFE上半部
+  \draw[dann edge] (target-east) -- (dan-cfe-target-west); % Target data直线进入CFE下半部
+  \draw[dann edge] (dan-src-feature-east) -- (emo-west); % CFE源域特征直线进入分类器
+  \draw[dann confuse edge] (dan-tgt-feature-east) -- (mmd-west); % CFE双域特征直线进入MMD
+  %
+  \node[font=\small, text=black] (titleNode) at (\xCFE, 1.85) {}; % 图标题锚点
+  \begin{scope}[on background layer] % 只创建上方模型区域锚点
+    \node[
+      inner sep=4mm,
+      fit=(titleNode)(sourceData)(targetData)(danCFE)(emoHead)(emoOut)(sourceFeatureCloud)(targetFeatureCloud)(lossOut)
+    ] (modelBox) {}; % 上方模型区域
+  \end{scope}
+  %
+  \domainFeatureLegend{modelBox}{6mm} % 源域/目标域特征图例
+\end{tikzpicture}

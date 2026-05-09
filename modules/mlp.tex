@@ -1,0 +1,112 @@
+% 集中定义 MLP 的 TikZ 样式和模块
+\tikzset{
+ % 基础神经元样式
+  mlp neuron/.style={
+    circle, % 圆形节点
+    draw=blue!55!black, % 边框混合色
+    fill=blue!10, % 填充浅蓝色
+    minimum size=6.8mm, % 最小尺寸
+    inner sep=0pt, % 内边距为0
+    font=\scriptsize % 使用较小字号
+  },
+ % 隐藏层神经元样式
+  mlp hidden neuron/.style={
+    mlp neuron, % 继承基础神经元样式
+    draw=teal!60!black, % 隐藏层边框色
+    fill=teal!12 % 隐藏层填充色
+  },
+  % 输出层神经元样式
+  mlp output neuron/.style={
+    mlp neuron, % 继承基础神经元样式
+    draw=orange!70!black, % 输出层边框色
+    fill=orange!16 % 输出层填充色
+  },
+  % 操作块样式
+  mlp op/.style={
+    rounded corners=2pt, % 轻微圆角
+    draw=gray!55, % 操作块边框色
+    fill=gray!8, % 操作块填充色
+    minimum width=14mm, % 最小宽度
+    minimum height=7mm, % 最小高度
+    inner xsep=3pt, % 左右内边距
+    font=\scriptsize % 使用较小字号
+  },
+  % 连线样式
+  mlp edge/.style={
+    -{Latex[length=1.5mm]}, % 箭头样式
+    draw=gray!65, % 连线颜色
+    line width=.50pt % 连线宽度
+  },
+  % 强调连线样式
+  mlp strong edge/.style={
+    -{Latex[length=2.2mm]}, % 更大的箭头
+    draw=gray!80, % 更深的连线颜色
+    line width=.55pt % 更粗的连线
+  },
+  % 模块外框样式
+  mlp frame/.style={
+    rounded corners=6pt, % 外框圆角
+    draw=gray!45, % 外框边框色
+    fill=white, % 外框背景色
+    inner sep=5mm % 外框内边距
+  },
+  % 定义 MLP 模块的样式
+  pics/mlp module/.style={
+    code={ % 定义可复用的 MLP 模块
+      \def\xinput{0} % 输入层的x坐标
+      \def\xlinear{1.35} % 线性变换的x坐标
+      \def\xhidden{2.75} % 隐藏层的x坐标
+      \def\xoutput{9.15} % 输出层的x坐标
+      \node[mlp neuron] (in1) at (\xinput, 1.05) {$x_1$}; % 输入第1维
+      \node[mlp neuron] (in2) at (\xinput, .35) {$x_2$}; % 输入第2维
+      \node[font=\scriptsize] (indots) at (\xinput, -.35) {$\vdots$}; % 输入省略号
+      \node[mlp neuron] (in4) at (\xinput, -1.05) {$x_d$}; % 输入第d维
+      %
+      \node[mlp op] (lin1) at (\xlinear, 0) {Linear}; % 第一层线性变换
+      %
+      \node[mlp hidden neuron] (h1) at (\xhidden, 1.4) {$h_1$}; % 隐藏单元1
+      \node[mlp hidden neuron] (h2) at (\xhidden, .7) {$h_2$}; % 隐藏单元2
+      \node[font=\scriptsize] (hdots) at (\xhidden, 0) {$\vdots$}; % 隐藏层省略号
+      \node[mlp hidden neuron] (h4) at (\xhidden, -.7) {$h_m$}; % 隐藏单元m
+      \node[mlp hidden neuron] (h5) at (\xhidden, -1.4) {$h_n$}; % 隐藏单元n
+      %
+      \node[mlp op] (act) at (\xoutput - 5.3, 0) {GELU}; % 激活函数
+      \node[mlp op] (drop) at (\xoutput - 3.6, 0) {Dropout}; % 随机失活
+      \node[mlp op] (lin2) at (\xoutput - 1.9, 0) {Linear}; % 第二层线性变换
+      %
+      \node[mlp output neuron] (out1) at (\xoutput, .7) {$y_1$}; % 输出第1维
+      \node[font=\scriptsize] (outdots) at (\xoutput, 0) {$\vdots$}; % 输出省略号
+      \node[mlp output neuron] (out3) at (\xoutput, -.7) {$y_k$}; % 输出第k维
+      %
+      \foreach \from in {in1,in2,in4} % 遍历输入节点
+      \draw[mlp edge] (\from) -- (lin1); % 输入连到Linear
+      %
+      \foreach \to in {h1,h2,h4,h5} % 遍历隐藏节点
+      \draw[mlp edge] (lin1) -- (\to); % Linear连到隐藏层
+      
+      %
+      \foreach \from in {h1,h2,h4,h5} % 遍历隐藏节点
+      \draw[mlp edge] (\from) -- (act); % 隐藏层连到GELU
+      %
+      \draw[mlp edge] (act) -- (drop); % GELU连到Dropout
+      \draw[mlp edge] (drop) -- (lin2); % Dropout连到Linear
+      %
+      \foreach \to in {out1,out3} % 遍历输出节点
+      \draw[mlp edge] (lin2) -- (\to); % Linear连到输出层
+      %
+      \node[font=\scriptsize, text=black] at (\xinput, -1.72) {Input}; % 输入标签
+      \node[font=\scriptsize, text=black] at (\xhidden, -1.95) {Hidden width}; % 隐藏层标签
+      \node[font=\scriptsize, text=black] at (\xoutput, -1.35) {Output}; % 输出标签
+      %
+      \begin{scope}[on background layer] % 只把外框画到背景层
+        \node[mlp frame, fit=(in1)(in4)(lin1)(h1)(h5)(act)(drop)(lin2)(out1)(out3)] (mlpbox) {}; % 模块外框
+      \end{scope}
+      %
+      \node[
+        anchor=south west, % 左下角作为定位点
+        font=\small, % 标题字号和加粗
+        text=black % 标题颜色
+      ] at ([xshift=2mm,yshift=1mm]mlpbox.north west) {MLP Module}; % 模块标题
+    }
+  }
+}
